@@ -1,0 +1,21 @@
+common:
+  image_file: "/home/cotek/calib_data/data/0.jpg"
+  pcd_file: "/home/cotek/calib_data/data/0.pcd"
+  result_file: "/home/cotek/calib_data/result.txt"
+
+camera:
+  camera_matrix: [650.253574, 0.0,        636.290737,
+                  0.0,        653.363634, 381.130920,
+                  0.0,        0.0,        1.0]
+  dist_coeffs: [-0.058185, 0.067761, -0.001211, -0.000277, -0.021455]
+
+calib:
+  calib_config_file: "/home/cotek/catkin_ws/src/livox_camera_calib/config/config_outdoor.yaml"
+  # 关掉全局乱搜，使用精确初值
+  use_rough_calib: True
+  # 正确的雷达系 -> 相机光学系理论初值矩阵 (前-左-上 转 右-下-前)
+  init_R: [ 0.0, -1.0,  0.0,
+            0.0,  0.0, -1.0,
+            1.0,  0.0,  0.0]
+  # 相机在雷达下方约 8cm, 前方 2cm (单位: 米)
+  init_T: [0.0, 0.08, 0.02]

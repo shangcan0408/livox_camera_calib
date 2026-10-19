@@ -1080,8 +1080,8 @@ void Calibration::buildVPnp(
   if (show_residual) {
     cv::Mat residual_img =
         getConnectImg(dis_threshold, cam_edge_cloud_2d, line_edge_cloud_2d);
-    cv::imshow("residual", residual_img);
-    cv::waitKey(100);
+    //cv::imshow("residual", residual_img);
+    //cv::waitKey(100);
   }
   pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree(
       new pcl::search::KdTree<pcl::PointXYZ>());
@@ -1250,8 +1250,8 @@ void Calibration::buildPnp(
   if (show_residual) {
     cv::Mat residual_img =
         getConnectImg(dis_threshold, cam_edge_cloud_2d, line_edge_cloud_2d);
-    cv::imshow("residual", residual_img);
-    cv::waitKey(100);
+    //cv::imshow("residual", residual_img);
+    //cv::waitKey(100);
   }
   pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree(
       new pcl::search::KdTree<pcl::PointXYZ>());

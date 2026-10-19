@@ -1,17 +1,16 @@
-# Data path. adjust them!
 common:
-    image_file: "/home/ycj/data/calib/image/0.png"
-    pcd_file: "/home/ycj/data/calib/pcd/0.pcd"
-    result_file: "/home/ycj/data/calib/extrinsic.txt"
+  image_file: "/home/cotek/calib_data/image/1.png"
+  pcd_file: "/home/cotek/calib_data/pcd/1.pcd"
+  result_file: "/home/cotek/calib_data/extrinsic.txt"
 
-# Camera Parameters. Adjust them!
 camera:
-    camera_matrix: [1364.45, 0.0,      958.327,
-                0.0,     1366.46,  535.074,
-                0.0,     0.0,      1.0     ]
-    dist_coeffs: [0.0958277, -0.198233, -0.000147133, -0.000430056, 0.000000]
+  # 刚才标定出的高精度 K 矩阵
+  camera_matrix: [650.253574, 0.0,        636.290737,
+                  0.0,        653.363634, 381.130920,
+                  0.0,        0.0,        1.0]
+  # 刚才标定出的畸变系数 D
+  dist_coeffs: [-0.031844, 0.036554, 0.001334, -0.000865, 0.0]
 
-# Calibration Parameters.!
 calib:
-    calib_config_file: "/home/ycj/catkin_ws/src/livox_camera_calib/config/config_outdoor.yaml"
-    use_rough_calib: true # set true if your initial_extrinsic is bad
+  calib_config_file: "/home/cotek/catkin_ws/src/livox_camera_calib/config/config_indoor.yaml"
+  use_rough_calib: true   # 开启粗标定搜索，防止初值不准

@@ -179,9 +179,9 @@ void roughCalib(Calibration &calibra, Vector6d &calib_params,
           calibra.buildVPnp(calib_params, match_dis, true,
                             calibra.rgb_egde_cloud_, calibra.plane_line_cloud_,
                             pnp_list);
-          cv::Mat projection_img = calibra.getProjectionImg(calib_params);
-          cv::imshow("Rough Optimization", projection_img);
-          cv::waitKey(50);
+          //cv::Mat projection_img = calibra.getProjectionImg(calib_params);
+          //cv::imshow("Rough Optimization", projection_img);
+          //cv::waitKey(50);
         }
       }
     }
@@ -253,16 +253,16 @@ int main(int argc, char **argv) {
   pub_cloud.header.frame_id = "livox";
   calibra.init_rgb_cloud_pub_.publish(pub_cloud);
   cv::Mat init_img = calibra.getProjectionImg(calib_params);
-  cv::imshow("Initial extrinsic", init_img);
-  cv::imwrite("/home/ycj/data/calib/init.png", init_img);
-  cv::waitKey(1000);
+  //cv::imshow("Initial extrinsic", init_img);
+  cv::imwrite("/home/cotek/calib_data/initial_view.png", init_img);
+  //cv::waitKey(1000);
 
   if (use_rough_calib) {
     roughCalib(calibra, calib_params, DEG2RAD(0.1), 50);
   }
   cv::Mat test_img = calibra.getProjectionImg(calib_params);
-  cv::imshow("After rough extrinsic", test_img);
-  cv::waitKey(1000);
+  //cv::imshow("After rough extrinsic", test_img);
+  //cv::waitKey(1000);
   int iter = 0;
   // Maximum match distance threshold: 15 pixels
   // If initial extrinsic lead to error over 15 pixels, the algorithm will not
@@ -286,9 +286,9 @@ int main(int argc, char **argv) {
       std::cout << "Iteration:" << iter++ << " Dis:" << dis_threshold
                 << " pnp size:" << vpnp_list.size() << std::endl;
 
-      cv::Mat projection_img = calibra.getProjectionImg(calib_params);
-      cv::imshow("Optimization", projection_img);
-      cv::waitKey(100);
+      //cv::Mat projection_img = calibra.getProjectionImg(calib_params);
+      //cv::imshow("Optimization", projection_img);
+      //cv::waitKey(100);
       Eigen::Vector3d euler_angle(calib_params[0], calib_params[1],
                                   calib_params[2]);
       Eigen::Matrix3d opt_init_R;
@@ -319,6 +319,13 @@ int main(int argc, char **argv) {
           ceres::CostFunction *cost_function;
           cost_function = vpnp_calib::Create(val);
           problem.AddResidualBlock(cost_function, NULL, ext, ext + 4);
+      // 限制平移量在支架真实物理尺寸范围内 (-25cm ~ +25cm)
+      problem.SetParameterLowerBound(ext + 4, 0, -0.20);
+      problem.SetParameterUpperBound(ext + 4, 0, 0.20);
+      problem.SetParameterLowerBound(ext + 4, 1, -0.25);
+      problem.SetParameterUpperBound(ext + 4, 1, 0.25);
+      problem.SetParameterLowerBound(ext + 4, 2, -0.30);
+      problem.SetParameterUpperBound(ext + 4, 2, 0.30);
         }
       } else {
         for (auto val : pnp_list) {
@@ -354,13 +361,11 @@ int main(int argc, char **argv) {
       std::cout << "q_dis:" << RAD2DEG(opt_q.angularDistance(q))
                 << " ,t_dis:" << (T - ori_t).norm() << std::endl;
       // getchar();
-      // if (opt_q.angularDistance(q) < DEG2RAD(0.01) &&
-      //     (T - ori_t).norm() < 0.005) {
-      //   opt_flag = false;
-      // }
-      // if (!opt_flag) {
-      //   break;
-      // }
+      if (opt_q.angularDistance(q) < DEG2RAD(0.05) && (T - ori_t).norm() < 0.01) {
+        opt_flag = false;
+        std::cout << ">>> CONVERGED! Early stopping to prevent drift. <<<" << std::endl;
+        break;
+      }
     }
     if (!opt_flag) {
       break;
@@ -373,6 +378,20 @@ int main(int argc, char **argv) {
   R = Eigen::AngleAxisd(calib_params[0], Eigen::Vector3d::UnitZ()) *
       Eigen::AngleAxisd(calib_params[1], Eigen::Vector3d::UnitY()) *
       Eigen::AngleAxisd(calib_params[2], Eigen::Vector3d::UnitX());
+  std::cout << "\n================= FINAL EXTRINSIC MATRIX =================" << std::endl;
+  std::cout << "result_file is: [" << result_file << "]" << std::endl;
+  for (int i = 0; i < 3; i++) {
+    std::cout << R(i, 0) << ", " << R(i, 1) << ", " << R(i, 2) << ", " << T[i] << std::endl;
+  }
+  std::cout << "0, 0, 0, 1" << std::endl;
+  std::cout << "==========================================================\n" << std::endl;
+  mkdir("/home/cotek/calib_data", 0777);
+  std::ofstream force_out("/home/cotek/calib_data/extrinsic_latest.txt");
+  for (int i = 0; i < 3; i++) {
+    force_out << R(i, 0) << "," << R(i, 1) << "," << R(i, 2) << "," << T[i] << std::endl;
+  }
+  force_out << "0,0,0,1" << std::endl;
+  force_out.close();
   std::ofstream outfile(result_file);
   for (int i = 0; i < 3; i++) {
     outfile << R(i, 0) << "," << R(i, 1) << "," << R(i, 2) << "," << T[i]
@@ -380,9 +399,9 @@ int main(int argc, char **argv) {
   }
   outfile << 0 << "," << 0 << "," << 0 << "," << 1 << std::endl;
   cv::Mat opt_img = calibra.getProjectionImg(calib_params);
-  cv::imshow("Optimization result", opt_img);
-  cv::imwrite("/home/ycj/data/calib/opt.png", opt_img);
-  cv::waitKey(1000);
+  //cv::imshow("Optimization result", opt_img);
+  cv::imwrite("/home/cotek/catkin_ws/calib_data/optimized_view.png", opt_img);
+  //cv::waitKey(1000);
   Eigen::Matrix3d init_rotation;
   init_rotation << 0, -1.0, 0, 0, 0, -1.0, 1, 0, 0;
   Eigen::Matrix3d adjust_rotation;

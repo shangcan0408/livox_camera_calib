@@ -13,6 +13,9 @@ string image_path;
 string pcd_path;
 string result_path;
 int data_num;
+vector<string> image_files;
+vector<string> pcd_files;
+bool show_gui;
 
 // Camera config
 vector<double> camera_matrix;
@@ -134,7 +137,7 @@ private:
 };
 
 void roughCalib(std::vector<Calibration> &calibs, Vector6d &calib_params,
-                double search_resolution, int max_iter) {
+                double search_resolution, int max_iter, bool show_gui) {
   float match_dis = 25;
   Eigen::Vector3d fix_adjust_euler(0, 0, 0);
   for (int n = 0; n < 2; n++)
@@ -183,8 +186,10 @@ void roughCalib(std::vector<Calibration> &calibs, Vector6d &calib_params,
                               calibs[0].rgb_egde_cloud_,
                               calibs[0].plane_line_cloud_, pnp_list);
           cv::Mat projection_img = calibs[0].getProjectionImg(calib_params);
-          cv::imshow("Rough Optimization", projection_img);
-          cv::waitKey(50);
+          if (show_gui) {
+            cv::imshow("Rough Optimization", projection_img);
+            cv::waitKey(50);
+          }
         }
       }
     }
@@ -199,6 +204,16 @@ int main(int argc, char **argv) {
   nh.param<string>("common/pcd_path", pcd_path, "");
   nh.param<string>("common/result_path", result_path, "");
   nh.param<int>("common/data_num", data_num, 1);
+  nh.param<vector<string>>("common/image_files", image_files, vector<string>());
+  nh.param<vector<string>>("common/pcd_files", pcd_files, vector<string>());
+  nh.param<bool>("common/show_gui", show_gui, false);
+  if (!image_files.empty() || !pcd_files.empty()) {
+    if (image_files.empty() || image_files.size() != pcd_files.size()) {
+      ROS_ERROR("common/image_files and common/pcd_files must both be set with the same number of entries");
+      return 1;
+    }
+    data_num = image_files.size();
+  }
   nh.param<vector<double>>("camera/camera_matrix", camera_matrix,
                            vector<double>());
   nh.param<vector<double>>("camera/dist_coeffs", dist_coeffs, vector<double>());
@@ -207,9 +222,14 @@ int main(int argc, char **argv) {
 
   std::vector<Calibration> calibs;
   for (size_t i = 0; i < data_num; i++) {
-    string image_file, pcd_file = "";
-    image_file = image_path + "/" + std::to_string(i) + ".bmp";
-    pcd_file = pcd_path + "/" + std::to_string(i) + ".pcd";
+    string image_file, pcd_file;
+    if (!image_files.empty()) {
+      image_file = image_files[i];
+      pcd_file = pcd_files[i];
+    } else {
+      image_file = image_path + "/" + std::to_string(i) + ".bmp";
+      pcd_file = pcd_path + "/" + std::to_string(i) + ".pcd";
+    }
     Calibration single_calib(image_file, pcd_file, calib_config_file);
     single_calib.fx_ = camera_matrix[0];
     single_calib.cx_ = camera_matrix[2];
@@ -255,14 +275,18 @@ int main(int argc, char **argv) {
   calib_params[4] = T[1];
   calib_params[5] = T[2];
   cv::Mat init_img = calibs[0].getProjectionImg(calib_params);
-  cv::imshow("Initial extrinsic", init_img);
-  cv::waitKey(1000);
+  if (show_gui) {
+    cv::imshow("Initial extrinsic", init_img);
+    cv::waitKey(1000);
+  }
   if (use_rough_calib) {
-    roughCalib(calibs, calib_params, DEG2RAD(0.2), 40);
+    roughCalib(calibs, calib_params, DEG2RAD(0.2), 40, show_gui);
   }
   cv::Mat test_img = calibs[0].getProjectionImg(calib_params);
-  cv::imshow("After rough extrinsic", test_img);
-  cv::waitKey(1000);
+  if (show_gui) {
+    cv::imshow("After rough extrinsic", test_img);
+    cv::waitKey(1000);
+  }
   int iter = 0;
   // Maximum match distance threshold: 15 pixels
   // If initial extrinsic lead to error over 15 pixels, the algorithm will not
@@ -288,8 +312,10 @@ int main(int argc, char **argv) {
       std::cout << "Iteration:" << iter++ << " Dis:" << dis_threshold
                 << " pnp size: " << vpnp_size << std::endl;
       cv::Mat projection_img = calibs[0].getProjectionImg(calib_params);
-      cv::imshow("Optimization", projection_img);
-      cv::waitKey(100);
+      if (show_gui) {
+        cv::imshow("Optimization", projection_img);
+        cv::waitKey(100);
+      }
       Eigen::Vector3d euler_angle(calib_params[0], calib_params[1],
                                   calib_params[2]);
       Eigen::Matrix3d opt_init_R;
@@ -376,8 +402,10 @@ int main(int argc, char **argv) {
   }
   outfile << 0 << "," << 0 << "," << 0 << "," << 1 << std::endl;
   cv::Mat opt_img = calibs[0].getProjectionImg(calib_params);
-  cv::imshow("Optimization result", opt_img);
-  cv::waitKey(1000);
+  if (show_gui) {
+    cv::imshow("Optimization result", opt_img);
+    cv::waitKey(1000);
+  }
   Eigen::Matrix3d init_rotation;
   init_rotation << 0, -1.0, 0, 0, 0, -1.0, 1, 0, 0;
   Eigen::Matrix3d adjust_rotation;
@@ -397,9 +425,8 @@ int main(int argc, char **argv) {
     pcl::toROSMsg(*rgb_cloud, pub_cloud);
     pub_cloud.header.frame_id = "livox";
     calibs[0].rgb_cloud_pub_.publish(pub_cloud);
-    std::cout << "push enter to publish again" << std::endl;
-    getchar();
-    /* code */
+    ros::spinOnce();
+    loop_rate.sleep();
   }
   return 0;
 }

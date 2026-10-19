@@ -5,8 +5,10 @@
     name="bag_to_pcd"
     output="screen"
   />
-   <param name="bag_file" type="string" value="/home/ycj/data/calib/outdoor1.bag"/>
-   <param name="lidar_topic" type="string" value="/livox/lidar"/>
-   <param name="pcd_file" type="string" value="$(find livox_camera_calib)/result/0.pcd"/>
-   <param name="is_custom_msg" type="bool" value="false"/>
+  <param name="bag_file" type="string" value="/home/cotek/catkin_ws/calib_static.bag" />
+  <param name="lidar_topic" type="string" value="/livox/lidar" />
+  <!-- 注意：这里是 pcd_file，且必须写具体的文件名 scene.pcd -->
+  <param name="pcd_file" type="string" value="/home/cotek/catkin_ws/calib_data/scene.pcd" />
+  <!-- 如果你录制的是标准 PointCloud2 消息填 false；如果是 Livox 的 CustomMsg 填 true -->
+  <param name="is_custom_msg" type="bool" value="false" />
 </launch>
